@@ -1,7 +1,6 @@
 
 using MySqlConnector;
 using HolidayMaker.Repositories;
-using System.Globalization;
 
 namespace HolidayMaker.UI;
 
@@ -183,12 +182,58 @@ public class ConsoleMenu
             guests <= 0)
         {
             Console.WriteLine(
-                "\nOgiltiga uppgifter. Kontrollera datum och antal gäster.");
+                "\nOgiltiga sökuppgifter. Kontrollera datum och antal gäster.");
             return;
         }
 
         DateTime checkIn = new DateTime(2026, 12, checkInDay);
         DateTime checkOut = new DateTime(2026, 12, checkOutDay);
+
+        Console.Write("\nPool krävs? (j/n): ");
+        string poolInput =
+            Console.ReadLine()?.Trim().ToLowerInvariant() ?? "";
+
+        Console.Write("Restaurang krävs? (j/n): ");
+        string restaurantInput =
+            Console.ReadLine()?.Trim().ToLowerInvariant() ?? "";
+
+        if ((poolInput != "j" && poolInput != "n") ||
+            (restaurantInput != "j" && restaurantInput != "n"))
+        {
+            Console.WriteLine("\nAnge j eller n för faciliteter.");
+            return;
+        }
+
+        bool requirePool = poolInput == "j";
+        bool requireRestaurant = restaurantInput == "j";
+
+        if (!TryReadDistance(
+                "\nMaxavstånd till stranden i meter (Enter = inget krav): ",
+                out int? maxBeachDistance) ||
+            !TryReadDistance(
+                "Maxavstånd till centrum i meter (Enter = inget krav): ",
+                out int? maxCenterDistance))
+        {
+            Console.WriteLine("\nAnge ett giltigt avstånd.");
+            return;
+        }
+
+        Console.WriteLine("\nSortera efter:");
+        Console.WriteLine("1. Lägsta pris");
+        Console.WriteLine("2. Högsta betyg");
+
+        Console.Write("Välj sortering: ");
+        string? sortChoice = Console.ReadLine();
+
+        if (sortChoice != "1" && sortChoice != "2")
+        {
+            Console.WriteLine("\nOgiltigt val av sortering.");
+            return;
+        }
+
+        string sortBy = sortChoice == "2"
+            ? "rating"
+            : "price";
 
         try
         {
@@ -197,12 +242,17 @@ public class ConsoleMenu
                     city,
                     checkIn,
                     checkOut,
-                    guests);
+                    guests,
+                    requirePool,
+                    requireRestaurant,
+                    maxBeachDistance,
+                    maxCenterDistance,
+                    sortBy);
 
             if (rooms.Count == 0)
             {
                 Console.WriteLine(
-                    "\nInga lediga rum hittades för den valda perioden.");
+                    "\nInga lediga rum hittades för dina sökkriterier.");
                 return;
             }
 
@@ -227,5 +277,28 @@ public class ConsoleMenu
             Console.WriteLine(
                 "\nKunde inte söka efter rum. Försök igen senare.");
         }
+    }
+
+    private static bool TryReadDistance(
+        string prompt,
+        out int? distance)
+    {
+        Console.Write(prompt);
+        string input = Console.ReadLine()?.Trim() ?? "";
+
+        distance = null;
+
+        if (input.Length == 0)
+        {
+            return true;
+        }
+
+        if (!int.TryParse(input, out int value) || value < 0)
+        {
+            return false;
+        }
+
+        distance = value;
+        return true;
     }
 }

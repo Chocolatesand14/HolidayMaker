@@ -1,4 +1,3 @@
-
 using MySqlConnector;
 
 namespace HolidayMaker.UI;
@@ -16,7 +15,9 @@ public class ConsoleMenu
     {
         while (true)
         {
-            Console.WriteLine("\n===== HOLIDAY MAKER =====");
+            Console.Clear();
+
+            Console.WriteLine("===== HOLIDAY MAKER =====");
             Console.WriteLine("1. View accommodations");
             Console.WriteLine("0. Exit");
             Console.Write("\nChoose an option: ");
@@ -26,7 +27,11 @@ public class ConsoleMenu
             switch (choice)
             {
                 case "1":
+                    Console.Clear();
                     await ShowAccommodationsAsync();
+
+                    Console.WriteLine("\nPress Enter to return to menu...");
+                    Console.ReadLine();
                     break;
 
                 case "0":
@@ -34,7 +39,8 @@ public class ConsoleMenu
                     return;
 
                 default:
-                    Console.WriteLine("Invalid option. Try again.");
+                    Console.WriteLine("\nInvalid option. Try again.");
+                    Console.ReadLine();
                     break;
             }
         }

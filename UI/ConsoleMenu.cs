@@ -1,14 +1,18 @@
+
 using MySqlConnector;
+using HolidayMaker.Repositories;
 
 namespace HolidayMaker.UI;
 
 public class ConsoleMenu
 {
     private readonly string _connectionString;
+    private readonly CustomerRepository _customerRepository;
 
     public ConsoleMenu(string connectionString)
     {
         _connectionString = connectionString;
+        _customerRepository = new CustomerRepository(connectionString);
     }
 
     public async Task RunAsync()
@@ -19,6 +23,7 @@ public class ConsoleMenu
 
             Console.WriteLine("===== HOLIDAY MAKER =====");
             Console.WriteLine("1. View accommodations");
+            Console.WriteLine("2. Register customer");
             Console.WriteLine("0. Exit");
             Console.Write("\nChoose an option: ");
 
@@ -29,9 +34,11 @@ public class ConsoleMenu
                 case "1":
                     Console.Clear();
                     await ShowAccommodationsAsync();
+                    break;
 
-                    Console.WriteLine("\nPress Enter to return to menu...");
-                    Console.ReadLine();
+                case "2":
+                    Console.Clear();
+                    await RegisterCustomerAsync();
                     break;
 
                 case "0":
@@ -39,10 +46,50 @@ public class ConsoleMenu
                     return;
 
                 default:
-                    Console.WriteLine("\nInvalid option. Try again.");
-                    Console.ReadLine();
+                    Console.WriteLine("Invalid option.");
                     break;
             }
+
+            Console.WriteLine("\nPress Enter to return to menu...");
+            Console.ReadLine();
+        }
+    }
+
+    private async Task RegisterCustomerAsync()
+    {
+        Console.WriteLine("===== REGISTER CUSTOMER =====\n");
+
+        Console.Write("Name: ");
+        string? name = Console.ReadLine()?.Trim();
+
+        Console.Write("Email: ");
+        string? email = Console.ReadLine()?.Trim();
+
+        Console.Write("Phone number: ");
+        string? phone = Console.ReadLine()?.Trim();
+
+        if (string.IsNullOrWhiteSpace(name) ||
+            string.IsNullOrWhiteSpace(email) ||
+            string.IsNullOrWhiteSpace(phone))
+        {
+            Console.WriteLine("\nAll fields are required.");
+            return;
+        }
+
+        try
+        {
+            long customerId = await _customerRepository.AddCustomerAsync(
+                name, email, phone);
+
+            Console.WriteLine($"\nCustomer registered! ID: {customerId}");
+        }
+        catch (MySqlException ex) when (ex.Number == 1062)
+        {
+            Console.WriteLine("\nA customer with this email already exists.");
+        }
+        catch (MySqlException)
+        {
+            Console.WriteLine("\nCould not register customer. Check the database connection.");
         }
     }
 
@@ -50,7 +97,9 @@ public class ConsoleMenu
     {
         try
         {
-            await using var connection = new MySqlConnection(_connectionString);
+            await using var connection =
+                new MySqlConnection(_connectionString);
+
             await connection.OpenAsync();
 
             const string sql = """
@@ -59,21 +108,21 @@ public class ConsoleMenu
                 ORDER BY id;
                 """;
 
-            await using var command = new MySqlCommand(sql, connection);
-            await using var reader = await command.ExecuteReaderAsync();
+            await using var command =
+                new MySqlCommand(sql, connection);
+
+            await using var reader =
+                await command.ExecuteReaderAsync();
 
             while (await reader.ReadAsync())
             {
-                int id = reader.GetInt32(0);
-                string name = reader.GetString(1);
-                string city = reader.GetString(2);
-
-                Console.WriteLine($"{id}. {name} - {city}");
+                Console.WriteLine(
+                    $"{reader.GetInt32(0)}. {reader.GetString(1)} - {reader.GetString(2)}");
             }
         }
-        catch (MySqlException ex)
+        catch (MySqlException)
         {
-            Console.WriteLine($"Database error: {ex.Message}");
+            Console.WriteLine("Could not retrieve accommodations.");
         }
     }
 }

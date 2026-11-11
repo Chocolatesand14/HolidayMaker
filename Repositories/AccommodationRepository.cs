@@ -1,17 +1,16 @@
-
 using MySqlConnector;
 
 namespace HolidayMaker.Repositories;
 
-public record AvailableRoom(
+// Används av RoomSearchScreen för att visa resultat från rumssökningen.
+public sealed record AvailableRoom(
     int Id,
     string Accommodation,
     string City,
     string RoomNumber,
     int MaxGuests,
     decimal PricePerNight,
-    int Rating
-);
+    decimal Rating);
 
 public class AccommodationRepository
 {
@@ -35,66 +34,58 @@ public class AccommodationRepository
     {
         var rooms = new List<AvailableRoom>();
 
-        await using var connection =
-            new MySqlConnection(_connectionString);
+        // ORDER BY kan inte parametriseras som ett vanligt värde.
+        // Därför väljer vi enbart mellan två fasta, tillåtna sorteringar.
+        string orderBy = sortBy == "rating"
+            ? "a.rating DESC, r.price_per_night ASC"
+            : "r.price_per_night ASC, a.rating DESC";
 
-        await connection.OpenAsync();
-
-        const string sql = """
+        string sql = $"""
             SELECT
                 r.id,
                 a.name,
                 a.city,
-                r.room_number,
+                CAST(r.room_number AS CHAR),
                 r.max_guests,
                 r.price_per_night,
                 a.rating
-            FROM room r
-            JOIN accommodation a
+            FROM room AS r
+            INNER JOIN accommodation AS a
                 ON r.accommodation_id = a.id
-            LEFT JOIN facility f
-                ON a.id = f.accommodation_id
-            WHERE a.city = @city
-                AND r.max_guests >= @guests
-                AND (@pool = FALSE OR f.has_pool = TRUE)
-                AND (@restaurant = FALSE OR f.has_restaurant = TRUE)
-                AND (@maxBeach IS NULL
-                    OR a.distance_to_beach_m <= @maxBeach)
-                AND (@maxCenter IS NULL
-                    OR a.distance_to_center_m <= @maxCenter)
-                AND NOT EXISTS (
-                    SELECT 1
-                    FROM booking b
-                    WHERE b.room_id = r.id
-                        AND b.start_date < @checkOut
-                        AND b.end_date > @checkIn
-                )
-            ORDER BY
-                CASE WHEN @sortBy = 'price'
-                    THEN r.price_per_night END ASC,
-                CASE WHEN @sortBy = 'rating'
-                    THEN a.rating END DESC,
-                r.id ASC;
+            LEFT JOIN facility AS f
+                ON f.accommodation_id = a.id
+            WHERE a.city LIKE @city
+              AND r.max_guests >= @guests
+              AND (@requirePool = FALSE OR COALESCE(f.has_pool, FALSE) = TRUE)
+              AND (@requireRestaurant = FALSE OR COALESCE(f.has_restaurant, FALSE) = TRUE)
+              AND (@maxBeachDistance IS NULL
+                   OR a.distance_to_beach_m <= @maxBeachDistance)
+              AND (@maxCenterDistance IS NULL
+                   OR a.distance_to_center_m <= @maxCenterDistance)
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM booking AS b
+                  WHERE b.room_id = r.id
+                    AND b.start_date < @checkOut
+                    AND b.end_date > @checkIn
+              )
+            ORDER BY {orderBy};
             """;
 
-        await using var command =
-            new MySqlCommand(sql, connection);
+        await using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
 
-        command.Parameters.AddWithValue("@city", city);
+        await using var command = new MySqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@city", $"%{city.Trim()}%");
+        command.Parameters.AddWithValue("@guests", guests);
+        command.Parameters.AddWithValue("@requirePool", requirePool);
+        command.Parameters.AddWithValue("@requireRestaurant", requireRestaurant);
+        command.Parameters.AddWithValue("@maxBeachDistance", (object?)maxBeachDistance ?? DBNull.Value);
+        command.Parameters.AddWithValue("@maxCenterDistance", (object?)maxCenterDistance ?? DBNull.Value);
         command.Parameters.AddWithValue("@checkIn", checkIn);
         command.Parameters.AddWithValue("@checkOut", checkOut);
-        command.Parameters.AddWithValue("@guests", guests);
-        command.Parameters.AddWithValue("@pool", requirePool);
-        command.Parameters.AddWithValue("@restaurant", requireRestaurant);
-        command.Parameters.AddWithValue(
-            "@maxBeach", (object?)maxBeachDistance ?? DBNull.Value);
-        command.Parameters.AddWithValue(
-            "@maxCenter", (object?)maxCenterDistance ?? DBNull.Value);
-        command.Parameters.AddWithValue("@sortBy", sortBy);
 
-        await using var reader =
-            await command.ExecuteReaderAsync();
-
+        await using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
             rooms.Add(new AvailableRoom(
@@ -103,9 +94,8 @@ public class AccommodationRepository
                 reader.GetString(2),
                 reader.GetString(3),
                 reader.GetInt32(4),
-                reader.GetDecimal(5),
-                Convert.ToInt32(reader.GetValue(6))
-            ));
+                Convert.ToDecimal(reader.GetValue(5)),
+                reader.IsDBNull(6) ? 0 : Convert.ToDecimal(reader.GetValue(6))));
         }
 
         return rooms;

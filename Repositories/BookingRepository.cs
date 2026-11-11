@@ -1,10 +1,9 @@
-
 using System.Data;
 using MySqlConnector;
 
 namespace HolidayMaker.Repositories;
 
-public record CustomerOption(int Id, string Name);
+public sealed record CustomerOption(int Id, string Name);
 
 public enum BookingStatus
 {
@@ -16,11 +15,10 @@ public enum BookingStatus
     RoomNotAvailable
 }
 
-public record BookingResult(
+public sealed record BookingResult(
     BookingStatus Status,
     long BookingId = 0,
-    decimal TotalPrice = 0
-);
+    decimal TotalPrice = 0);
 
 public class BookingRepository
 {
@@ -35,29 +33,23 @@ public class BookingRepository
     {
         var customers = new List<CustomerOption>();
 
-        await using var connection =
-            new MySqlConnection(_connectionString);
-
-        await connection.OpenAsync();
-
         const string sql = """
             SELECT id, name
             FROM customer
-            ORDER BY name;
+            ORDER BY id;
             """;
 
-        await using var command =
-            new MySqlCommand(sql, connection);
+        await using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
 
-        await using var reader =
-            await command.ExecuteReaderAsync();
+        await using var command = new MySqlCommand(sql, connection);
+        await using var reader = await command.ExecuteReaderAsync();
 
         while (await reader.ReadAsync())
         {
             customers.Add(new CustomerOption(
                 reader.GetInt32(0),
-                reader.GetString(1)
-            ));
+                reader.GetString(1)));
         }
 
         return customers;
@@ -70,52 +62,40 @@ public class BookingRepository
         DateTime checkOut,
         int guests)
     {
-        if (customerId <= 0 ||
-            roomId <= 0 ||
-            guests <= 0 ||
-            checkIn.Year != 2026 ||
-            checkIn.Month != 12 ||
-            checkOut.Year != 2026 ||
-            checkOut.Month != 12 ||
-            checkOut <= checkIn)
+        if (customerId <= 0 || roomId <= 0 || guests <= 0 ||
+            checkIn >= checkOut ||
+            checkIn.Year != 2026 || checkIn.Month != 12 ||
+            checkOut.Year != 2026 || checkOut.Month != 12)
         {
             return new BookingResult(BookingStatus.InvalidInput);
         }
 
-        await using var connection =
-            new MySqlConnection(_connectionString);
-
+        await using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        // Keep the checks and INSERT in one transaction.
+        // Samtliga kontroller och bokningen sker inom samma transaktion.
         await using var transaction =
-            await connection.BeginTransactionAsync(
-                IsolationLevel.ReadCommitted);
+            await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted);
 
-        // Check that the customer exists.
         const string customerSql = """
             SELECT COUNT(*)
             FROM customer
             WHERE id = @customerId;
             """;
 
-        await using (var customerCommand =
-            new MySqlCommand(customerSql, connection, transaction))
+        await using (var command = new MySqlCommand(customerSql, connection, transaction))
         {
-            customerCommand.Parameters.AddWithValue(
-                "@customerId", customerId);
-
-            long count = Convert.ToInt64(
-                await customerCommand.ExecuteScalarAsync());
-
-            if (count == 0)
+            command.Parameters.AddWithValue("@customerId", customerId);
+            var exists = Convert.ToInt32(await command.ExecuteScalarAsync()) > 0;
+            if (!exists)
             {
-                return new BookingResult(
-                    BookingStatus.CustomerNotFound);
+                await transaction.RollbackAsync();
+                return new BookingResult(BookingStatus.CustomerNotFound);
             }
         }
 
-        // Lock the room while checking and creating the booking.
+        // Lås rumsraden så två samtidiga bokningar av samma rum
+        // inte kan passera tillgänglighetskontrollen samtidigt.
         const string roomSql = """
             SELECT max_guests, price_per_night
             FROM room
@@ -123,34 +103,34 @@ public class BookingRepository
             FOR UPDATE;
             """;
 
-        int maxGuests;
-        decimal pricePerNight;
-
-        await using (var roomCommand =
-            new MySqlCommand(roomSql, connection, transaction))
+        int maxGuests = 0;
+        decimal pricePerNight = 0;
+        bool roomFound;
+        await using (var command = new MySqlCommand(roomSql, connection, transaction))
         {
-            roomCommand.Parameters.AddWithValue("@roomId", roomId);
-
-            await using var reader =
-                await roomCommand.ExecuteReaderAsync();
-
-            if (!await reader.ReadAsync())
+            command.Parameters.AddWithValue("@roomId", roomId);
+            await using var reader = await command.ExecuteReaderAsync();
+            roomFound = await reader.ReadAsync();
+            if (roomFound)
             {
-                return new BookingResult(
-                    BookingStatus.RoomNotFound);
+                maxGuests = reader.GetInt32(0);
+                pricePerNight = Convert.ToDecimal(reader.GetValue(1));
             }
+        }
 
-            maxGuests = reader.GetInt32(0);
-            pricePerNight = reader.GetDecimal(1);
+        // Läsa färdigt och stäng DataReader innan transaktionen rullas tillbaka.
+        if (!roomFound)
+        {
+            await transaction.RollbackAsync();
+            return new BookingResult(BookingStatus.RoomNotFound);
         }
 
         if (guests > maxGuests)
         {
-            return new BookingResult(
-                BookingStatus.CapacityExceeded);
+            await transaction.RollbackAsync();
+            return new BookingResult(BookingStatus.CapacityExceeded);
         }
 
-        // A room is unavailable only when the periods overlap.
         const string availabilitySql = """
             SELECT COUNT(*)
             FROM booking
@@ -159,70 +139,45 @@ public class BookingRepository
               AND end_date > @checkIn;
             """;
 
-        await using (var availabilityCommand =
-            new MySqlCommand(
-                availabilitySql, connection, transaction))
+        await using (var command = new MySqlCommand(availabilitySql, connection, transaction))
         {
-            availabilityCommand.Parameters.AddWithValue(
-                "@roomId", roomId);
+            command.Parameters.AddWithValue("@roomId", roomId);
+            command.Parameters.AddWithValue("@checkIn", checkIn);
+            command.Parameters.AddWithValue("@checkOut", checkOut);
 
-            availabilityCommand.Parameters.AddWithValue(
-                "@checkIn", checkIn);
-
-            availabilityCommand.Parameters.AddWithValue(
-                "@checkOut", checkOut);
-
-            long overlappingBookings = Convert.ToInt64(
-                await availabilityCommand.ExecuteScalarAsync());
+            var overlappingBookings =
+                Convert.ToInt32(await command.ExecuteScalarAsync());
 
             if (overlappingBookings > 0)
             {
-                return new BookingResult(
-                    BookingStatus.RoomNotAvailable);
+                await transaction.RollbackAsync();
+                return new BookingResult(BookingStatus.RoomNotAvailable);
             }
         }
 
-        // Save the booking.
         const string insertSql = """
             INSERT INTO booking
-                (customer_id, room_id, start_date,
-                 end_date, number_of_guests)
+                (customer_id, room_id, start_date, end_date, number_of_guests)
             VALUES
-                (@customerId, @roomId, @checkIn,
-                 @checkOut, @guests);
+                (@customerId, @roomId, @checkIn, @checkOut, @guests);
             """;
 
-        await using var insertCommand =
-            new MySqlCommand(insertSql, connection, transaction);
+        long bookingId;
+        await using (var command = new MySqlCommand(insertSql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("@customerId", customerId);
+            command.Parameters.AddWithValue("@roomId", roomId);
+            command.Parameters.AddWithValue("@checkIn", checkIn);
+            command.Parameters.AddWithValue("@checkOut", checkOut);
+            command.Parameters.AddWithValue("@guests", guests);
 
-        insertCommand.Parameters.AddWithValue(
-            "@customerId", customerId);
-
-        insertCommand.Parameters.AddWithValue(
-            "@roomId", roomId);
-
-        insertCommand.Parameters.AddWithValue(
-            "@checkIn", checkIn);
-
-        insertCommand.Parameters.AddWithValue(
-            "@checkOut", checkOut);
-
-        insertCommand.Parameters.AddWithValue(
-            "@guests", guests);
-
-        await insertCommand.ExecuteNonQueryAsync();
-
-        long bookingId = insertCommand.LastInsertedId;
-
-        int nights = (checkOut - checkIn).Days;
-        decimal totalPrice = nights * pricePerNight;
+            await command.ExecuteNonQueryAsync();
+            bookingId = command.LastInsertedId;
+        }
 
         await transaction.CommitAsync();
 
-        return new BookingResult(
-            BookingStatus.Created,
-            bookingId,
-            totalPrice
-        );
+        decimal totalPrice = (checkOut - checkIn).Days * pricePerNight;
+        return new BookingResult(BookingStatus.Created, bookingId, totalPrice);
     }
 }

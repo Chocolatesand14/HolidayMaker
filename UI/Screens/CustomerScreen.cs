@@ -17,7 +17,8 @@ public class CustomerScreen
 
     public async Task RegisterAsync()
     {
-        Console.WriteLine("===== REGISTRERA KUND =====\n");
+        Console.WriteLine("===== REGISTRERA KUND =====");
+        Console.WriteLine("Skriv 0 för att gå tillbaka till huvudmenyn.\n");
 
         // Kontrollera namn
         string name;
@@ -26,6 +27,12 @@ public class CustomerScreen
         {
             Console.Write("Namn: ");
             string? input = Console.ReadLine()?.Trim();
+
+            if (input == "0" || input == null)
+            {
+                Console.WriteLine("\nRegistreringen avbröts.");
+                return;
+            }
 
             if (string.IsNullOrWhiteSpace(input))
             {
@@ -50,6 +57,12 @@ public class CustomerScreen
         {
             Console.Write("E-postadress: ");
             string? input = Console.ReadLine()?.Trim();
+
+            if (input == "0" || input == null)
+            {
+                Console.WriteLine("\nRegistreringen avbröts.");
+                return;
+            }
 
             if (string.IsNullOrWhiteSpace(input))
             {
@@ -78,6 +91,12 @@ public class CustomerScreen
         {
             Console.Write("Telefonnummer: ");
             string? input = Console.ReadLine()?.Trim();
+
+            if (input == "0" || input == null)
+            {
+                Console.WriteLine("\nRegistreringen avbröts.");
+                return;
+            }
 
             if (string.IsNullOrWhiteSpace(input))
             {

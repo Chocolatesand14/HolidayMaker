@@ -1,4 +1,3 @@
-
 # Holiday Maker 🏨
 
 Holiday Maker är ett bokningssystem som jag har utvecklat i C# och MySQL som en del av min utbildning till mjukvaruutvecklare med AI-inriktning.
@@ -72,7 +71,7 @@ Projektet använder:
 Databasen heter `holiday_maker` och innehåller sex tabeller:
 
 | Tabell | Beskrivning |
-|--------|-------------|
+|---|---|
 | customer | Lagrar kunduppgifter |
 | accommodation | Lagrar information om boenden |
 | facility | Lagrar boendenas faciliteter |
@@ -99,8 +98,9 @@ HolidayMaker/
 ├── UI/
 │   ├── Screens/
 │   └── ConsoleMenu.cs
-├── docs/
-│   └── ER-diagram.png
+├── Docs/
+│   ├── ER-diagram.png
+│   └── Manuella-tester.md
 ├── holiday_maker.sql
 ├── Program.cs
 ├── HolidayMaker.csproj
@@ -140,6 +140,25 @@ dotnet run
 ```
 
 Programmet visar sedan huvudmenyn där operatören kan välja funktion.
+
+## Manuella tester
+
+För att kontrollera att Holiday Maker fungerar används manuella tester av bokningssystemets viktigaste funktioner.
+
+Testerna omfattar bland annat:
+
+- Att lediga rum visas och upptagna rum filtreras bort.
+- Att ett rum kan bokas samma dag som en annan kund checkar ut.
+- Att överlappande bokningar nekas, även när en bokning omsluter en annan.
+- Att rummets kapacitet inte kan överskridas.
+- Att kombinerade sökfilter och båda sorteringsalternativen fungerar.
+- Att ändring av antal gäster följer rummets kapacitet.
+- Att avbokade rum blir tillgängliga igen.
+- Att bokningar finns kvar efter att programmet har startats om.
+
+Testernas genomförande och resultat dokumenteras i en separat fil.
+
+[Se dokumentation för manuella tester](Docs/Manuella-tester.md)
 
 ## Säkerhet
 

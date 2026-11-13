@@ -1,6 +1,8 @@
 
 using HolidayMaker.Repositories;
 using MySqlConnector;
+using System.Net.Mail;
+using System.Linq;
 
 namespace HolidayMaker.UI.Screens;
 
@@ -17,45 +19,95 @@ public class CustomerScreen
     {
         Console.WriteLine("===== REGISTRERA KUND =====\n");
 
-        string? name;
-        do
+        // Kontrollera namn
+        string name;
+
+        while (true)
         {
             Console.Write("Namn: ");
-            name = Console.ReadLine()?.Trim();
+            string? input = Console.ReadLine()?.Trim();
 
-            if (string.IsNullOrWhiteSpace(name))
+            if (string.IsNullOrWhiteSpace(input))
             {
                 Console.WriteLine("Du måste ange ett namn!\n");
+                continue;
             }
 
-        } while (string.IsNullOrWhiteSpace(name));
+            if (input.Length > 100)
+            {
+                Console.WriteLine("Namnet är för långt!\n");
+                continue;
+            }
 
-        string? email;
-        do
+            name = input;
+            break;
+        }
+
+        // Kontrollera e-postadress
+        string email;
+
+        while (true)
         {
             Console.Write("E-postadress: ");
-            email = Console.ReadLine()?.Trim();
+            string? input = Console.ReadLine()?.Trim();
 
-            if (string.IsNullOrWhiteSpace(email))
+            if (string.IsNullOrWhiteSpace(input))
             {
                 Console.WriteLine("Du måste ange en e-postadress!\n");
+                continue;
             }
 
-        } while (string.IsNullOrWhiteSpace(email));
+            if (input.Length > 255 ||
+                input.Contains(' ') ||
+                !MailAddress.TryCreate(input, out var address) ||
+                address.Address != input ||
+                !address.Host.Contains('.'))
+            {
+                Console.WriteLine("Ogiltig e-postadress. Försök igen.\n");
+                continue;
+            }
 
-        string? phone;
-        do
+            email = input;
+            break;
+        }
+
+        // Kontrollera telefonnummer
+        string phone;
+
+        while (true)
         {
             Console.Write("Telefonnummer: ");
-            phone = Console.ReadLine()?.Trim();
+            string? input = Console.ReadLine()?.Trim();
 
-            if (string.IsNullOrWhiteSpace(phone))
+            if (string.IsNullOrWhiteSpace(input))
             {
                 Console.WriteLine("Du måste ange ett telefonnummer!\n");
+                continue;
             }
 
-        } while (string.IsNullOrWhiteSpace(phone));
+            string digits = new string(
+                input.Where(char.IsDigit).ToArray());
 
+            bool validCharacters = input.All(
+                c => char.IsDigit(c) ||
+                     c == ' ' || c == '-' || c == '+');
+
+            if (input.Length > 30 ||
+                !validCharacters ||
+                input.Count(c => c == '+') > 1 ||
+                (input.Contains('+') && !input.StartsWith('+')) ||
+                digits.Length < 7 ||
+                digits.Length > 15)
+            {
+                Console.WriteLine("Ogiltigt telefonnummer. Försök igen.\n");
+                continue;
+            }
+
+            phone = input;
+            break;
+        }
+
+        // Registrera kunden
         try
         {
             long customerId =

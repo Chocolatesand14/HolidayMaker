@@ -1,16 +1,20 @@
-## Manuella tester – Holiday Maker
+# Manuella tester – Holiday Maker
 
-För att kontrollera att Holiday Maker fungerar har följande testfall tagits fram. Testerna genomförs manuellt genom att använda programmets menyer och kontrollera resultatet.
+För att kontrollera att Holiday Maker fungerar har åtta manuella tester genomförts via programmets menyer. Syftet var att kontrollera att sökningar, bokningar och ändringar fungerar som de ska.
 
-| Test | Hur det kontrolleras | Förväntat resultat |
+| Test | Hur det testades | Resultat |
 |---|---|---|
-| Lediga och upptagna rum | Sök på datum där ett rum är bokat och ett annat är ledigt. | Bara det lediga rummet visas. |
-| Incheckning samma dag | Skapa en bokning med incheckning samma dag som en tidigare bokning har utcheckning. | Bokningen godkänns. |
-| Överlappande bokningar | Försök boka ett upptaget rum, även med datum som helt omsluter en befintlig bokning. | Bokningen nekas. |
-| För många gäster | Försök boka ett rum för två personer med tre gäster. | Bokningen nekas. |
-| Sökfilter och sortering | Kombinera ort, datum, pool, restaurang och avstånd. Testa sortering efter pris och betyg. | Rätt rum visas i rätt ordning. |
-| Ändra antal gäster | Försök ändra en bokning till fler gäster än rummet tillåter. | Ändringen nekas. |
-| Avbokning | Avboka ett rum och sök på samma datum igen. | Rummet blir tillgängligt. |
-| Sparad information | Skapa en bokning, avsluta programmet och starta det igen. | Bokningen finns fortfarande kvar. |
+| Lediga och upptagna rum | Sökte på datum där ett rum var bokat och ett annat ledigt. | Godkänt – endast lediga rum visades. |
+| Incheckning samma dag | Bokade ett rum samma dag som en tidigare kund checkade ut. | Godkänt – bokningen gick igenom. |
+| Överlappande bokningar | Försökte boka ett upptaget rum, även med datum som helt omslöt en befintlig bokning. | Godkänt – bokningarna nekades. |
+| För många gäster | Försökte boka ett rum för två personer med tre gäster. | Godkänt – bokningen nekades. |
+| Sökfilter och sortering | Kombinerade ort, datum, pool, restaurang och avstånd. Testade även sortering efter pris och betyg. | Godkänt – filtrering och sortering fungerade. |
+| Ändra antal gäster | Försökte ändra en bokning till fler gäster än rummet tillät. | Godkänt – ändringen nekades. |
+| Avbokning | Avbokade ett rum och sökte på samma datum igen. | Godkänt – rummet blev tillgängligt igen. |
+| Sparad information | Skapade en bokning, avslutade programmet och startade om det. | Godkänt – bokningen fanns kvar. |
 
-**Testresultat:** Fyll i vilka tester som har genomförts och om de fungerade som förväntat.
+## Testresultat
+
+Samtliga åtta manuella tester genomfördes och fungerade som förväntat.
+
+Testerna visar att programmets viktigaste funktioner fungerar och att bokningsinformationen sparas i databasen även efter att programmet har startats om.

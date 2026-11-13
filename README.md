@@ -58,7 +58,7 @@ Jag har lagt in felhantering för att programmet ska vara enklare att använda.
 
 Projektet använder:
 
-- C# och .NET
+- C# och .NET 10
 - MySQL
 - Docker
 - DataGrip
@@ -93,15 +93,16 @@ Diagrammet visar hur tabellerna hör ihop, deras datatyper och relationerna mell
 
 ```text
 HolidayMaker/
+├── Database/
+│   └── holiday_maker.sql
+├── Docs/
+│   ├── ER-diagram.png
+│   └── Manuella-tester.md
 ├── Models/
 ├── Repositories/
 ├── UI/
 │   ├── Screens/
 │   └── ConsoleMenu.cs
-├── Docs/
-│   ├── ER-diagram.png
-│   └── Manuella-tester.md
-├── holiday_maker.sql
 ├── Program.cs
 ├── HolidayMaker.csproj
 └── README.md
@@ -113,25 +114,29 @@ HolidayMaker/
 
 Se till att Docker är startat och att en MySQL-server körs.
 
-Importera databasen från:
+Importera databasen från filen:
 
-`holiday_maker.sql`
+`Database/holiday_maker.sql`
 
-SQL-filen innehåller databasens tabeller och testdata.
+SQL-filen innehåller databasens tabeller och testdata. Den kan exempelvis köras som ett SQL-skript i DataGrip.
 
 ### 2. Databasanslutning
 
-Programmet behöver en anslutningssträng till MySQL.
+Programmet använder **.NET User Secrets** för att läsa anslutningssträngen till MySQL. Det gör att lösenordet inte behöver skrivas direkt i koden eller läggas upp på GitHub.
 
-Kontrollera att databasnamn, användarnamn, lösenord och port stämmer med din egen MySQL-miljö.
+Öppna terminalen i projektmappen och kör följande kommando. Byt ut användarnamn, lösenord och eventuellt port så att de stämmer med din egen MySQL-miljö:
 
-Lösenord ska inte läggas upp på GitHub.
+```bash
+dotnet user-secrets set "ConnectionStrings:HolidayMaker" "Server=localhost;Port=3306;Database=holiday_maker;User ID=ditt_anvandarnamn;Password=ditt_losenord"
+```
+
+Projektet är redan inställt för User Secrets, så du behöver inte köra `dotnet user-secrets init`.
 
 ### 3. Starta programmet
 
-Öppna projektet i Visual Studio Code.
+Öppna projektet i Visual Studio Code. Se till att .NET 10 SDK finns installerat.
 
-Kör följande kommandon i terminalen:
+Kör följande kommandon i terminalen från projektmappen:
 
 ```bash
 dotnet restore
@@ -143,7 +148,7 @@ Programmet visar sedan huvudmenyn där operatören kan välja funktion.
 
 ## Manuella tester
 
-För att kontrollera att Holiday Maker fungerar används manuella tester av bokningssystemets viktigaste funktioner.
+För att kontrollera att Holiday Maker fungerar har manuella tester genomförts av bokningssystemets viktigaste funktioner.
 
 Testerna omfattar bland annat:
 
@@ -156,7 +161,7 @@ Testerna omfattar bland annat:
 - Att avbokade rum blir tillgängliga igen.
 - Att bokningar finns kvar efter att programmet har startats om.
 
-Testernas genomförande och resultat dokumenteras i en separat fil.
+Testernas genomförande och resultat finns dokumenterade i en separat fil.
 
 [Se dokumentation för manuella tester](Docs/Manuella-tester.md)
 

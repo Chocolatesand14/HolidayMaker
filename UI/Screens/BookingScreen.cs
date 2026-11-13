@@ -1,3 +1,4 @@
+
 using HolidayMaker.Repositories;
 using MySqlConnector;
 
@@ -17,7 +18,8 @@ public class BookingScreen
     public async Task CreateAsync()
     {
         Console.WriteLine("===== SKAPA BOKNING =====");
-        Console.WriteLine("Bokningsperiod: december 2026\n");
+        Console.WriteLine("Bokningsperiod: december 2026");
+        Console.WriteLine("Skriv 0 för att gå tillbaka till huvudmenyn.\n");
 
         try
         {
@@ -39,63 +41,75 @@ public class BookingScreen
                     $"{customer.Id}. {customer.Name}");
             }
 
-            Console.Write("\nAnge kundnummer: ");
-            bool validCustomer = int.TryParse(
-                Console.ReadLine(),
-                out int customerId);
+            // Kontrollera kundnummer
+            int? customerId = ReadNumber(
+                "\nAnge kundnummer: ", 1);
+
+            if (customerId == null)
+            {
+                Console.WriteLine("\nBokningen avbröts.");
+                return;
+            }
 
             Console.WriteLine(
                 "\nRums-ID hittar du under 'Sök lediga rum'.");
 
-            Console.Write("Ange rums-ID: ");
-            bool validRoom = int.TryParse(
-                Console.ReadLine(),
-                out int roomId);
+            // Kontrollera rums-ID
+            int? roomId = ReadNumber(
+                "Ange rums-ID: ", 1);
 
-            Console.Write("\nIncheckning - december 2026 (dag 1-31): ");
-            bool validCheckIn = int.TryParse(
-                Console.ReadLine(),
-                out int checkInDay);
-
-            Console.Write("Utcheckning - december 2026 (dag 1-31): ");
-            bool validCheckOut = int.TryParse(
-                Console.ReadLine(),
-                out int checkOutDay);
-
-            Console.Write("Antal gäster: ");
-            bool validGuests = int.TryParse(
-                Console.ReadLine(),
-                out int guests);
-
-            if (!validCustomer ||
-                !validRoom ||
-                !validCheckIn ||
-                !validCheckOut ||
-                !validGuests ||
-                customerId <= 0 ||
-                roomId <= 0 ||
-                checkInDay < 1 ||
-                checkInDay > 31 ||
-                checkOutDay < 1 ||
-                checkOutDay > 31 ||
-                checkOutDay <= checkInDay ||
-                guests <= 0)
+            if (roomId == null)
             {
-                Console.WriteLine(
-                    "\nOgiltiga bokningsuppgifter. Kontrollera dina val.");
+                Console.WriteLine("\nBokningen avbröts.");
                 return;
             }
 
-            DateTime checkIn = new(2026, 12, checkInDay);
-            DateTime checkOut = new(2026, 12, checkOutDay);
+            // Kontrollera incheckning
+            int? checkInDay = ReadNumber(
+                "\nIncheckning - december 2026 (dag 1-30): ",
+                1, 30);
 
+            if (checkInDay == null)
+            {
+                Console.WriteLine("\nBokningen avbröts.");
+                return;
+            }
+
+            // Kontrollera utcheckning
+            int? checkOutDay = ReadNumber(
+                "Utcheckning - december 2026 (dag 1-31): ",
+                checkInDay.Value + 1, 31);
+
+            if (checkOutDay == null)
+            {
+                Console.WriteLine("\nBokningen avbröts.");
+                return;
+            }
+
+            // Kontrollera antal gäster
+            int? guests = ReadNumber(
+                "Antal gäster: ", 1);
+
+            if (guests == null)
+            {
+                Console.WriteLine("\nBokningen avbröts.");
+                return;
+            }
+
+            DateTime checkIn =
+                new(2026, 12, checkInDay.Value);
+
+            DateTime checkOut =
+                new(2026, 12, checkOutDay.Value);
+
+            // Skapa bokningen i databasen
             var result =
                 await _bookingRepository.CreateBookingAsync(
-                    customerId,
-                    roomId,
+                    customerId.Value,
+                    roomId.Value,
                     checkIn,
                     checkOut,
-                    guests);
+                    guests.Value);
 
             switch (result.Status)
             {
@@ -116,7 +130,7 @@ public class BookingScreen
                         $"Antal nätter: {(checkOut - checkIn).Days}");
 
                     Console.WriteLine(
-                        $"Antal gäster: {guests}");
+                        $"Antal gäster: {guests.Value}");
 
                     Console.WriteLine(
                         $"Totalpris: {result.TotalPrice:N2} kr");
@@ -157,41 +171,93 @@ public class BookingScreen
 
     public async Task ShowCustomerBookingsAsync()
     {
-        Console.WriteLine("===== KUNDENS BOKNINGAR =====\n");
-        Console.Write("Ange kundnummer: ");
+        Console.WriteLine("===== KUNDENS BOKNINGAR =====");
+        Console.WriteLine("Skriv 0 för att gå tillbaka till huvudmenyn.\n");
 
-        if (!int.TryParse(Console.ReadLine(), out int customerId) ||
-            customerId <= 0)
+        int? customerId = ReadNumber(
+            "Ange kundnummer: ", 1);
+
+        if (customerId == null)
         {
-            Console.WriteLine("\nOgiltigt kundnummer.");
+            Console.WriteLine("\nVisningen avbröts.");
             return;
         }
 
         try
         {
             var bookings = await _bookingOverviewRepository
-                .GetBookingsByCustomerAsync(customerId);
+                .GetBookingsByCustomerAsync(customerId.Value);
 
             if (bookings.Count == 0)
             {
-                Console.WriteLine("\nInga bokningar hittades för kunden.");
+                Console.WriteLine(
+                    "\nInga bokningar hittades för kunden.");
                 return;
             }
 
             foreach (var booking in bookings)
             {
-                Console.WriteLine($"\nBokningsnummer: {booking.BookingId}");
-                Console.WriteLine($"Boende: {booking.AccommodationName}");
-                Console.WriteLine($"Rumsnummer: {booking.RoomNumber}");
-                Console.WriteLine($"Incheckning: {booking.StartDate:yyyy-MM-dd}");
-                Console.WriteLine($"Utcheckning: {booking.EndDate:yyyy-MM-dd}");
-                Console.WriteLine($"Antal gäster: {booking.NumberOfGuests}");
+                Console.WriteLine(
+                    $"\nBokningsnummer: {booking.BookingId}");
+                Console.WriteLine(
+                    $"Boende: {booking.AccommodationName}");
+                Console.WriteLine(
+                    $"Rumsnummer: {booking.RoomNumber}");
+                Console.WriteLine(
+                    $"Incheckning: {booking.StartDate:yyyy-MM-dd}");
+                Console.WriteLine(
+                    $"Utcheckning: {booking.EndDate:yyyy-MM-dd}");
+                Console.WriteLine(
+                    $"Antal gäster: {booking.NumberOfGuests}");
                 Console.WriteLine("------------------------------");
             }
         }
         catch (MySqlException)
         {
-            Console.WriteLine("\nKunde inte hämta kundens bokningar.");
+            Console.WriteLine(
+                "\nKunde inte hämta kundens bokningar.");
+        }
+    }
+
+    // Läser och kontrollerar nummer
+    // 0 = avbryt
+    private static int? ReadNumber(
+        string prompt, int min, int? max = null)
+    {
+        while (true)
+        {
+            Console.Write(prompt);
+            string? input = Console.ReadLine()?.Trim();
+
+            if (input == "0" || input == null)
+            {
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                Console.WriteLine(
+                    "Du måste ange ett nummer!\n");
+                continue;
+            }
+
+            if (int.TryParse(input, out int number) &&
+                number >= min &&
+                (max == null || number <= max.Value))
+            {
+                return number;
+            }
+
+            if (max == null)
+            {
+                Console.WriteLine(
+                    $"Ange ett heltal på minst {min}.\n");
+            }
+            else
+            {
+                Console.WriteLine(
+                    $"Ange ett heltal mellan {min} och {max.Value}.\n");
+            }
         }
     }
 }

@@ -1,3 +1,4 @@
+
 using HolidayMaker.Repositories;
 using MySqlConnector;
 
@@ -16,23 +17,44 @@ public class CustomerScreen
     {
         Console.WriteLine("===== REGISTRERA KUND =====\n");
 
-        Console.Write("Namn: ");
-        string? name = Console.ReadLine()?.Trim();
-
-        Console.Write("E-postadress: ");
-        string? email = Console.ReadLine()?.Trim();
-
-        Console.Write("Telefonnummer: ");
-        string? phone = Console.ReadLine()?.Trim();
-
-        if (string.IsNullOrWhiteSpace(name) ||
-            string.IsNullOrWhiteSpace(email) ||
-            string.IsNullOrWhiteSpace(phone))
+        string? name;
+        do
         {
-            Console.WriteLine(
-                "\nAlla fält måste fyllas i.");
-            return;
-        }
+            Console.Write("Namn: ");
+            name = Console.ReadLine()?.Trim();
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                Console.WriteLine("Du måste ange ett namn!\n");
+            }
+
+        } while (string.IsNullOrWhiteSpace(name));
+
+        string? email;
+        do
+        {
+            Console.Write("E-postadress: ");
+            email = Console.ReadLine()?.Trim();
+
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                Console.WriteLine("Du måste ange en e-postadress!\n");
+            }
+
+        } while (string.IsNullOrWhiteSpace(email));
+
+        string? phone;
+        do
+        {
+            Console.Write("Telefonnummer: ");
+            phone = Console.ReadLine()?.Trim();
+
+            if (string.IsNullOrWhiteSpace(phone))
+            {
+                Console.WriteLine("Du måste ange ett telefonnummer!\n");
+            }
+
+        } while (string.IsNullOrWhiteSpace(phone));
 
         try
         {

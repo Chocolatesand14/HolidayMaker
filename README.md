@@ -88,7 +88,7 @@ Jag har även använt begränsningar som `NOT NULL`, `UNIQUE` och `CHECK` för a
 
 Diagrammet visar hur tabellerna hör ihop, deras datatyper och relationerna mellan dem.
 
-![Holiday Maker ER-diagram](docs/ER-diagram.png)
+![Holiday Maker ER-diagram](Docs/ER-diagram.png)
 
 ## Projektstruktur
 
